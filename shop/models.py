@@ -4,7 +4,6 @@ from django.core.exceptions import ValidationError
 
 class Category(models.Model):
     name = models.CharField(max_length=200, db_index=True)
-    slug = models.SlugField(max_length=200, unique=True)
 
     class Meta:
         ordering = ("name",)
@@ -18,7 +17,6 @@ class Product(models.Model):
         Category, related_name="products"
     )
     name = models.CharField(max_length=200, db_index=True)
-    slug = models.CharField(max_length=200, db_index=True)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     published = models.BooleanField(default=True)
     deleted = models.BooleanField(default=False)
