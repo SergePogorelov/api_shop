@@ -1,6 +1,5 @@
 from rest_framework import mixins, viewsets
 from rest_framework.serializers import ValidationError
-from rest_framework import status
 
 from shop.models import Category, Product
 from .serializers import CategorySerializer, ProductSerializer
@@ -24,17 +23,23 @@ class ProductViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         published = self.request.data.get("published", True)
-        categories = Category.objects.filter(
-            id__in=self.request.data.getlist("categories")
-        )
+
+        try:
+            categories = Category.objects.filter(
+                id__in=self.request.data.getlist("categories")
+            )
+        except ValueError:
+            raise ValidationError(
+                {"categories": "id категории должно быть числом."}
+            )
 
         if categories.count() < 2 or categories.count() > 10:
             raise ValidationError(
                 {
-                    "error": "У каждого товара должно быть от 2х до 10 категорий."
+                    "categories": "У каждого товара должно быть от 2х до 10 категорий."
                 }
             )
-            
+
         serializer.save(categories=categories, published=published)
 
     def perform_update(self, serializer):
