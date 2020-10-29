@@ -1,7 +1,9 @@
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import mixins, viewsets
 from rest_framework.serializers import ValidationError
 
 from shop.models import Category, Product
+from .filters import ProductFilter
 from .serializers import CategorySerializer, ProductSerializer
 
 
@@ -13,13 +15,17 @@ class CategoryViewSet(
 
     def perform_destroy(self, instance):
         if instance.products.all().count():
-            raise ValidationError({"error": "Категория прикреплена к товару"})
+            raise ValidationError(
+                {"Error": "The category has active products"}
+            )
         instance.delete()
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
     queryset = Product.objects.filter(deleted=False)
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ProductFilter
 
     def perform_create(self, serializer):
         published = self.request.data.get("published", True)
@@ -28,16 +34,12 @@ class ProductViewSet(viewsets.ModelViewSet):
             categories = Category.objects.filter(
                 id__in=self.request.data.getlist("categories")
             )
-        except ValueError:
-            raise ValidationError(
-                {"categories": "id категории должно быть числом."}
-            )
+        except ValueError as ex:
+            raise ValidationError({"categories": ex})
 
         if categories.count() < 2 or categories.count() > 10:
             raise ValidationError(
-                {
-                    "categories": "У каждого товара должно быть от 2х до 10 категорий."
-                }
+                {"categories": "Each product must have from 2 to 10 categories."}
             )
 
         serializer.save(categories=categories, published=published)
