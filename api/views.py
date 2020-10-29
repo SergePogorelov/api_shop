@@ -27,25 +27,37 @@ class ProductViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ProductFilter
 
-    def perform_create(self, serializer):
-        published = self.request.data.get("published", True)
-
+    def check_categories(self, categories_id):
         try:
-            categories = Category.objects.filter(
-                id__in=self.request.data.getlist("categories")
-            )
+            categories = Category.objects.filter(id__in=categories_id)
         except ValueError as ex:
             raise ValidationError({"categories": ex})
 
         if categories.count() < 2 or categories.count() > 10:
             raise ValidationError(
-                {"categories": "Each product must have from 2 to 10 categories."}
+                {
+                    "categories": "Each product must have from 2 to 10 categories."
+                }
             )
 
+        return categories
+
+    def perform_create(self, serializer):
+        published = self.request.data.get("published", True)
+        categories_id = self.request.data.getlist("categories")
+        categories = self.check_categories(categories_id)
         serializer.save(categories=categories, published=published)
 
     def perform_update(self, serializer):
-        self.perform_create(serializer)
+        categories_id = self.request.data.getlist("categories")
+
+        if not serializer.partial:
+            self.perform_create(serializer)
+
+        if categories_id:
+            self.perform_create(serializer)
+
+        serializer.save()
 
     def perform_destroy(self, instance):
         instance.deleted = True
